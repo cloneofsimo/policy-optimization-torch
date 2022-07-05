@@ -59,7 +59,7 @@ Where $\delta_{t}$ is the discounted TD residual defined on 4.
 
 ## Note
 Using the original definition from the paper proposing [GAE](https://arxiv.org/abs/1506.02438), $\lambda>0$ 
-has the same value as 5. By their definition, setting $\lambda = 0$ yields 4. But we can see that this is not the case if we evauate using 5. It's not a big deal, because this shenanigan happend since ${0}^{0}$ is not well defined. Follow equation (16) from the paper for more details.
+has the same value as 5. By their definition, setting $\lambda=0$ yields 4. But we can see that this is not the case if we evauate using 5. It's not a big deal, because this shenanigan happend since ${0}^{0}$ is not well defined. Follow equation (16) from the paper for more details.
 
 
 
