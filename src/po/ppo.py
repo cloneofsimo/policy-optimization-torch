@@ -16,8 +16,8 @@ class PPO(VanilaPolicyGradient):
         self,
         env,
         actor_critic: nn.Module,
-        steps_per_epoch: int = 1000,
-        epochs: int = 250,
+        steps_per_epoch: int = 6000,
+        epochs: int = 300,
         gamma: float = 0.99,
         pi_lr: float = 3e-4,
         vf_lr: float = 1e-3,
@@ -79,7 +79,8 @@ class PPO(VanilaPolicyGradient):
 
 if __name__ == "__main__":
 
-    env = gym.make("CartPole-v0")
+    # compares ppo and vpg, with different reward weights.
+    env = gym.make("BipedalWalker-v3")
 
     for pg_weight in [
         "discounted-returns",
@@ -89,10 +90,10 @@ if __name__ == "__main__":
         "gae",
     ]:
 
-        ac = MLPActorCritic(env.observation_space, env.action_space, (64, 64))
+        ac = MLPActorCritic(env.observation_space, env.action_space, (128, 128))
         ppo = PPO(env=env, actor_critic=ac, pg_weight=pg_weight)
         ppo.train(debug=False)
 
-        ac = MLPActorCritic(env.observation_space, env.action_space, (64, 64))
+        ac = MLPActorCritic(env.observation_space, env.action_space, (128, 128))
         vga = VanilaPolicyGradient(env=env, actor_critic=ac, pg_weight=pg_weight)
         vga.train(debug=False)

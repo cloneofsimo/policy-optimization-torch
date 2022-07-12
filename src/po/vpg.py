@@ -50,6 +50,7 @@ class VanilaPolicyGradient:
         lam: float = 0.95,
         max_ep_len: int = 3000,
         pg_weight: str = "reward-to-go",
+        device: str = "cpu",
     ):
         self.env = env
         self.ac = actor_critic
@@ -157,16 +158,16 @@ class VanilaPolicyGradient:
                 # clear
                 bufs = {k: [] for k in bufs}
 
-        wghts = torch.stack(b_weights, dim=0)
+        wghts = torch.cat(b_weights, dim=0)
         # normalized
         wghts = (wghts - wghts.mean()) / (wghts.std())
 
         return (
-            torch.stack(b_obs, dim=0),
-            torch.stack(b_acts, dim=0),
+            torch.cat(b_obs, dim=0),
+            torch.cat(b_acts, dim=0),
             wghts,
-            torch.stack(b_rets, dim=0),
-            torch.stack(b_logp, dim=0),
+            torch.cat(b_rets, dim=0),
+            torch.cat(b_logp, dim=0),
         )
 
     def optimize(self, obs, act, weight, ret, logp) -> None:
@@ -223,9 +224,9 @@ class VanilaPolicyGradient:
 
 if __name__ == "__main__":
 
-    test_vec = torch.randn(10)
-    print(test_vec)
-    print(discount_cumsum(test_vec, 0.9))
+    # test_vec = torch.randn(10)
+    # print(test_vec)
+    # print(discount_cumsum(test_vec, 0.9))
 
     env = gym.make("BipedalWalker-v3")
 

@@ -11,7 +11,6 @@ from torch.distributions.categorical import Categorical
 from torch.distributions.normal import Normal
 
 
-
 def mlp(sizes, activation, output_activation=nn.Identity):
     layers = []
     for j in range(len(sizes) - 1):
