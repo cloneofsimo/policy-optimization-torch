@@ -96,7 +96,7 @@ class VanilaPolicyGradient:
             ep_len += 1
 
             bufs[OBSERVATION].append(torch.tensor(obs))
-            bufs[ACTION].append(int(action))
+            bufs[ACTION].append(torch.tensor(action))
             bufs[REWARD].append(float(reward))
             bufs[VALUE].append(float(value))
             bufs[LOG_P].append(float(logp))
@@ -149,7 +149,7 @@ class VanilaPolicyGradient:
                 obs, ep_ret, ep_len = self.env.reset(), 0, 0
 
                 b_obs.append(torch.stack(bufs[OBSERVATION]))
-                b_acts.append(torch.tensor(bufs[ACTION]))
+                b_acts.append(torch.stack(bufs[ACTION]))
                 b_weights.append(torch.tensor(bufs[POL_WEIGHT]))
                 b_rets.append(torch.tensor(bufs[RETURN]))
                 b_logp.append(torch.tensor(bufs[LOG_P]))
@@ -157,16 +157,16 @@ class VanilaPolicyGradient:
                 # clear
                 bufs = {k: [] for k in bufs}
 
-        wghts = torch.cat(b_weights, dim=0)
+        wghts = torch.stack(b_weights, dim=0)
         # normalized
         wghts = (wghts - wghts.mean()) / (wghts.std())
 
         return (
-            torch.cat(b_obs, dim=0),
-            torch.cat(b_acts, dim=0),
+            torch.stack(b_obs, dim=0),
+            torch.stack(b_acts, dim=0),
             wghts,
-            torch.cat(b_rets, dim=0),
-            torch.cat(b_logp, dim=0),
+            torch.stack(b_rets, dim=0),
+            torch.stack(b_logp, dim=0),
         )
 
     def optimize(self, obs, act, weight, ret, logp) -> None:
@@ -187,26 +187,27 @@ class VanilaPolicyGradient:
 
     def train(self, debug: bool = False) -> None:
 
-        wandb.init(
-            project="policy-optimization-torch",
-            name=f"{self.env.spec.id}-{self.__class__.__name__}-{self.pg_weight}",
-            entity="simoryu",
-            config={
-                "gamma": self.gamma,
-                "pi_lr": self.pi_lr,
-                "vf_lr": self.vf_lr,
-                "train_v_iters": self.train_v_iters,
-                "lam": self.lam,
-                "max_ep_len": self.max_ep_len,
-                "pg_weight": self.pg_weight,
-                "steps_per_epoch": self.steps_per_epoch,
-                "epochs": self.epochs,
-                "env_name": self.env.__class__.__name__,
-                "actor_critic": self.ac.__class__.__name__,
-                "env": self.env.__class__.__name__,
-            },
-            reinit=True,
-        )
+        if not debug:
+            wandb.init(
+                project="policy-optimization-torch",
+                name=f"{self.env.spec.id}-{self.__class__.__name__}-{self.pg_weight}",
+                entity="simoryu",
+                config={
+                    "gamma": self.gamma,
+                    "pi_lr": self.pi_lr,
+                    "vf_lr": self.vf_lr,
+                    "train_v_iters": self.train_v_iters,
+                    "lam": self.lam,
+                    "max_ep_len": self.max_ep_len,
+                    "pg_weight": self.pg_weight,
+                    "steps_per_epoch": self.steps_per_epoch,
+                    "epochs": self.epochs,
+                    "env_name": self.env.__class__.__name__,
+                    "actor_critic": self.ac.__class__.__name__,
+                    "env": self.env.__class__.__name__,
+                },
+                reinit=True,
+            )
 
         # wandb.watch(self.ac)
 
@@ -215,7 +216,6 @@ class VanilaPolicyGradient:
             self.optimize(obs, act, weight, ret, logp)
 
             if debug:
-
                 break
 
         wandb.finish()
@@ -227,7 +227,7 @@ if __name__ == "__main__":
     print(test_vec)
     print(discount_cumsum(test_vec, 0.9))
 
-    env = gym.make("CartPole-v0")
+    env = gym.make("BipedalWalker-v3")
 
     ac = MLPActorCritic(env.observation_space, env.action_space, (64, 64))
     vpg = VanilaPolicyGradient(env=env, actor_critic=ac, pg_weight="reward-to-go")

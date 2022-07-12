@@ -4,8 +4,9 @@
 Benchmarking VPG & PPO with various weights ($\Psi$) for the policy gradient term, where $\Psi$ is used as:
 
 $$\begin{align*}
-g_\theta :=& \mathbb{E}\big[ \nabla_\theta \log \pi_\theta(a|s) \big] \\
-\sim & \mathbb{E}\big[ \sum_{t = 0} ^ \infty  \Psi_t \nabla_\theta  \log \pi_\theta(a_t | s_t ) \big]
+g_\theta := & \nabla J_\theta (\pi_\theta) \\
+=& \mathbb{E}\big[ \nabla_\theta \sum \log \pi_\theta(a_t|s_t) R \big] \\
+=& \mathbb{E}\big[ \sum_{t = 0} ^ \infty  \Psi_t \nabla_\theta  \log \pi_\theta(a_t | s_t ) \big]
 \end{align*}$$
 
 
