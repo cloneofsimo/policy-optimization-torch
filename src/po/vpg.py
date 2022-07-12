@@ -41,8 +41,8 @@ class VanilaPolicyGradient:
         self,
         env,
         actor_critic: nn.Module,
-        steps_per_epoch: int = 1000,
-        epochs: int = 250,
+        steps_per_epoch: int = 10000,
+        epochs: int = 1000,
         gamma: float = 0.99,
         pi_lr: float = 3e-4,
         vf_lr: float = 1e-3,
@@ -169,15 +169,18 @@ class VanilaPolicyGradient:
                             "ep_len": ep_len,
                         }
                     )
-                    print("Episode {} finished after {} steps".format(ep_len, ep_len))
+                    print(f"Ep ret : {ep_ret}")
+                    print(f"Ep len : {ep_len}")
+                    print(f"T : {t}")
 
-                obs, ep_ret, ep_len = self.env.reset(), 0, 0
-
+                
                 b_obs.append(bufs[OBSERVATION][:_totlen])
                 b_acts.append(bufs[ACTION][:_totlen])
                 b_weights.append(bufs[POL_WEIGHT][:_totlen])
                 b_rets.append(bufs[RETURN][:_totlen])
                 b_logp.append(bufs[LOG_P][:_totlen])
+
+                obs, ep_ret, ep_len = self.env.reset(), 0, 0
 
                 # clear
                 bufs = {k: v.clone() for k, v in self.empty_buffs.items()}
@@ -267,7 +270,7 @@ if __name__ == "__main__":
 
     env = gym.make("BipedalWalker-v3")
 
-    ac = MLPActorCritic(env.observation_space, env.action_space, (64, 64))
+    ac = MLPActorCritic(env.observation_space, env.action_space, (128, 128, 128, 128))
     vpg = VanilaPolicyGradient(
         env=env, actor_critic=ac, pg_weight="reward-to-go", device="cuda"
     )
