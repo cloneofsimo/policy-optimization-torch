@@ -7,6 +7,7 @@ from typing import Dict, Tuple, Union
 
 import gym
 import numpy as np
+from pytorch_lightning import seed_everything
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -75,11 +76,11 @@ class VanilaPolicyGradient:
         self.empty_buffs = {
             OBSERVATION: torch.zeros(_MAX_STEP, *self.env.observation_space.shape),
             ACTION: torch.zeros(_MAX_STEP, *self.env.action_space.shape).long(),
-            REWARD: torch.zeros(_MAX_STEP, 1),
-            RETURN: torch.zeros(_MAX_STEP, 1),
-            VALUE: torch.zeros(_MAX_STEP, 1),
-            POL_WEIGHT: torch.zeros(_MAX_STEP, 1),
-            LOG_P: torch.zeros(_MAX_STEP, 1),
+            REWARD: torch.zeros(_MAX_STEP),
+            RETURN: torch.zeros(_MAX_STEP),
+            VALUE: torch.zeros(_MAX_STEP),
+            POL_WEIGHT: torch.zeros(_MAX_STEP),
+            LOG_P: torch.zeros(_MAX_STEP),
         }
 
         print("BUFFER SIZES")
@@ -168,8 +169,6 @@ class VanilaPolicyGradient:
                     bufs[POL_WEIGHT][:_totlen] = discount_cumsum(deltas, self.gamma * self.lam)
 
                 if terminal:
-                    #pass
-
                     wandb.log(
                         {
                             "ep_ret": ep_ret,
@@ -187,13 +186,6 @@ class VanilaPolicyGradient:
                 b_weights.append(bufs[POL_WEIGHT][:_totlen])
                 b_rets.append(bufs[RETURN][:_totlen])
                 b_logp.append(bufs[LOG_P][:_totlen])
-
-                print(bufs[OBSERVATION][:_totlen])
-                print(bufs[ACTION][:_totlen])
-                print(bufs[POL_WEIGHT][:_totlen])
-                print(bufs[RETURN][:_totlen])
-                print(bufs[LOG_P][:_totlen])
-
                 obs, ep_ret, ep_len = self.env.reset(), 0, 0
 
                 # clear
@@ -214,8 +206,7 @@ class VanilaPolicyGradient:
         )
 
     def optimize(self, obs, act, weight, ret, logp) -> None:
-
-        #self.ac.train()
+        self.ac.train()
 
         obs, act, weight, ret, logp = (
             obs.to(self.device),
@@ -225,11 +216,10 @@ class VanilaPolicyGradient:
             logp.to(self.device),
         )
 
-        print(obs.shape, act.shape, weight.shape, ret.shape, logp.shape)
-
         self.pi_opt.zero_grad()
         # compute pi
         pi, logp = self.ac.pi(obs, act)
+        
         loss_pi = -(logp * weight).mean()
         loss_pi.backward()
         self.pi_opt.step()
@@ -237,11 +227,12 @@ class VanilaPolicyGradient:
         for i in range(self.train_v_iters):
             self.vf_opt.zero_grad()
             # compute v
-            loss_v = (self.ac.v(obs).flatten() - ret.flatten()).pow(2).mean()
+            loss_v = (self.ac.v(obs).reshape(-1) - ret.reshape(-1)).pow(2).mean()
+            #print(loss_v)
             loss_v.backward()
             self.vf_opt.step()
 
-        #self.ac.eval()
+        self.ac.eval()
 
     def train(self, debug: bool = False) -> None:
 
@@ -274,10 +265,11 @@ class VanilaPolicyGradient:
             print(f"Epoch {epoch}")
 
             obs, act, weight, ret, logp, meta = self.collect()
-            #print(obs, act, weight, ret, logp)
+            #
             self.optimize(obs, act, weight, ret, logp)
 
-            if debug:
+            if debug and epoch == 1:
+                print(obs[-5:], act[-5:], weight[-5:], ret[-5:], logp[-5:])
                 break
 
         wandb.finish()
@@ -289,12 +281,15 @@ if __name__ == "__main__":
     # print(test_vec)
     # print(discount_cumsum(test_vec, 0.9))
 
-    #env = gym.make("BipedalWalker-v3")
-    env = gym.make("CartPole-v0")
+    env = gym.make("BipedalWalker-v3")
+    #env = gym.make("CartPole-v0")
+    env.seed(0)
+    seed_everything(0)
 
     ac = MLPActorCritic(env.observation_space, env.action_space, (64, 64))
     vpg = VanilaPolicyGradient(
         env=env, actor_critic=ac, pg_weight="reward-to-go", device="cpu"
     )
+    
 
     vpg.train(debug=False)
