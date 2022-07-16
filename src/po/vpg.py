@@ -100,7 +100,7 @@ class VanilaPolicyGradient:
         obs, ep_ret, ep_len = self.env.reset(), 0, 0
         ptr = 0
 
-        bufs = {k: v.clone() for k, v in self.empty_buffs.items()}
+        bufs = {k: torch.zeros_like(v) for k, v in self.empty_buffs.items()}
 
         b_obs, b_acts, b_weights, b_rets, b_logp = [], [], [], [], []
 
@@ -143,29 +143,29 @@ class VanilaPolicyGradient:
                 ptr += 1
                 _totlen = ptr - 1
                 
-                rwds = bufs[REWARD][: ptr]
+                rwds = bufs[REWARD][: ptr].clone()
                 bufs[RETURN] = discount_cumsum(rwds, self.gamma)[:-1]
 
                 if self.pg_weight == "discounted-returns":
-                    bufs[POL_WEIGHT] = rwds[0].repeat(_totlen)
+                    bufs[POL_WEIGHT][:_totlen] = rwds[0].repeat(_totlen).reshape(-1, 1)
 
                 elif self.pg_weight == "reward-to-go":
-                    bufs[POL_WEIGHT] = bufs[RETURN]
+                    bufs[POL_WEIGHT][:_totlen] = bufs[RETURN]
 
                 elif self.pg_weight == "reward-to-go-baseline":
-                    bufs[POL_WEIGHT] = bufs[RETURN] - bufs[VALUE]
+                    bufs[POL_WEIGHT][:_totlen] = bufs[RETURN] - bufs[VALUE]
 
                 elif self.pg_weight == "discounted-td-residual":
                     bufs[VALUE][ptr] = torch.tensor(v)
                     vals = bufs[VALUE][: _totlen + 1]
                     deltas = rwds[:-1] + self.gamma * vals[1:] - vals[:-1]
-                    bufs[POL_WEIGHT] = deltas
+                    bufs[POL_WEIGHT][:_totlen] = deltas
 
                 elif self.pg_weight == "gae":
                     bufs[VALUE][ptr] = torch.tensor(v)
                     vals = bufs[VALUE][: _totlen + 1]
                     deltas = rwds[:-1] + self.gamma * vals[1:] - vals[:-1]
-                    bufs[POL_WEIGHT] = discount_cumsum(deltas, self.gamma * self.lam)
+                    bufs[POL_WEIGHT][:_totlen] = discount_cumsum(deltas, self.gamma * self.lam)
 
                 if terminal:
                     #pass
@@ -188,10 +188,16 @@ class VanilaPolicyGradient:
                 b_rets.append(bufs[RETURN][:_totlen])
                 b_logp.append(bufs[LOG_P][:_totlen])
 
+                print(bufs[OBSERVATION][:_totlen])
+                print(bufs[ACTION][:_totlen])
+                print(bufs[POL_WEIGHT][:_totlen])
+                print(bufs[RETURN][:_totlen])
+                print(bufs[LOG_P][:_totlen])
+
                 obs, ep_ret, ep_len = self.env.reset(), 0, 0
 
                 # clear
-                bufs = {k: v.clone() for k, v in self.empty_buffs.items()}
+                bufs = {k: torch.zeros_like(v) for k, v in self.empty_buffs.items()}
                 ptr = 0
 
         wghts = torch.cat(b_weights, dim=0)
@@ -209,7 +215,7 @@ class VanilaPolicyGradient:
 
     def optimize(self, obs, act, weight, ret, logp) -> None:
 
-        self.ac.train()
+        #self.ac.train()
 
         obs, act, weight, ret, logp = (
             obs.to(self.device),
@@ -218,6 +224,8 @@ class VanilaPolicyGradient:
             ret.to(self.device),
             logp.to(self.device),
         )
+
+        print(obs.shape, act.shape, weight.shape, ret.shape, logp.shape)
 
         self.pi_opt.zero_grad()
         # compute pi
@@ -233,7 +241,7 @@ class VanilaPolicyGradient:
             loss_v.backward()
             self.vf_opt.step()
 
-        self.ac.eval()
+        #self.ac.eval()
 
     def train(self, debug: bool = False) -> None:
 
@@ -286,7 +294,7 @@ if __name__ == "__main__":
 
     ac = MLPActorCritic(env.observation_space, env.action_space, (64, 64))
     vpg = VanilaPolicyGradient(
-        env=env, actor_critic=ac, pg_weight="discounted-td-residual", device="cuda"
+        env=env, actor_critic=ac, pg_weight="reward-to-go", device="cpu"
     )
 
     vpg.train(debug=False)
