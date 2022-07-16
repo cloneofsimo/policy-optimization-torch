@@ -42,14 +42,14 @@ class VanilaPolicyGradient:
         self,
         env,
         actor_critic: nn.Module,
-        steps_per_epoch: int = 1000,
+        steps_per_epoch: int = 6400,
         epochs: int = 250,
-        gamma: float = 0.99,
-        pi_lr: float = 3e-4,
+        gamma: float = 0.98,
+        pi_lr: float = 1e-4,
         vf_lr: float = 1e-3,
         train_v_iters: int = 100,
         lam: float = 0.95,
-        max_ep_len: int = 3000,
+        max_ep_len: int = 3200,
         pg_weight: str = "reward-to-go",
         device: str = "cpu",
     ):
@@ -71,11 +71,11 @@ class VanilaPolicyGradient:
         self.pg_weight = pg_weight
         self.device = device
 
-        _MAX_STEP = max_ep_len
+        _MAX_STEP = steps_per_epoch
 
         self.empty_buffs = {
             OBSERVATION: torch.zeros(_MAX_STEP, *self.env.observation_space.shape),
-            ACTION: torch.zeros(_MAX_STEP, *self.env.action_space.shape).long(),
+            ACTION: torch.zeros(_MAX_STEP, *self.env.action_space.shape),
             REWARD: torch.zeros(_MAX_STEP),
             RETURN: torch.zeros(_MAX_STEP),
             VALUE: torch.zeros(_MAX_STEP),
@@ -109,6 +109,8 @@ class VanilaPolicyGradient:
             action, value, logp = self.ac.step(torch.tensor(obs).to(self.device))
             # print(action, value, logp)
             next_obs, reward, is_done, _ = self.env.step(action)
+
+            reward = reward / 100.0
 
             ep_ret += reward
             ep_len += 1
@@ -281,12 +283,12 @@ if __name__ == "__main__":
     # print(test_vec)
     # print(discount_cumsum(test_vec, 0.9))
 
-    env = gym.make("BipedalWalker-v3")
-    #env = gym.make("CartPole-v0")
+    #env = gym.make("BipedalWalker-v3")
+    env = gym.make("CartPole-v0")
     env.seed(0)
     seed_everything(0)
 
-    ac = MLPActorCritic(env.observation_space, env.action_space, (64, 64))
+    ac = MLPActorCritic(env.observation_space, env.action_space, (128, 128))
     vpg = VanilaPolicyGradient(
         env=env, actor_critic=ac, pg_weight="reward-to-go", device="cpu"
     )

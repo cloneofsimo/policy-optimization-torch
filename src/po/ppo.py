@@ -16,15 +16,15 @@ class PPO(VanilaPolicyGradient):
         self,
         env,
         actor_critic: nn.Module,
-        steps_per_epoch: int = 1000,
+        steps_per_epoch: int = 6400,
         epochs: int = 500,
         gamma: float = 0.99,
-        pi_lr: float = 3e-4,
-        vf_lr: float = 1e-3,
-        train_v_iters: int = 100,
-        train_pi_iters: int = 100,
+        pi_lr: float = 1e-4,
+        vf_lr: float = 1e-4,
+        train_v_iters: int = 200,
+        train_pi_iters: int = 50,
         lam: float = 0.95,
-        max_ep_len: int = 3000,
+        max_ep_len: int = 1600,
         pg_weight: str = "reward-to-go",
         target_kl=0.01,
         clip_ratio=0.2,
@@ -94,19 +94,23 @@ if __name__ == "__main__":
 
     # compares ppo and vpg, with different reward weights.
     env = gym.make("CartPole-v0")
+    env = gym.make("BipedalWalker-v3")
+    ac = MLPActorCritic(env.observation_space, env.action_space, (128, 128, 128))
+    ppo = PPO(env=env, actor_critic=ac, pg_weight="gae", device = "cpu")
+    ppo.train(debug=False)
 
-    for pg_weight in [
-        "discounted-returns",
-        "reward-to-go",
-        "reward-to-go-baseline",
-        "discounted-td-residual",
-        "gae",
-    ]:
+    # for pg_weight in [
+    #     "discounted-returns",
+    #     "reward-to-go",
+    #     "reward-to-go-baseline",
+    #     "discounted-td-residual",
+    #     "gae",
+    # ]:
 
-        ac = MLPActorCritic(env.observation_space, env.action_space, (64, 64))
-        ppo = PPO(env=env, actor_critic=ac, pg_weight=pg_weight, device = "cuda:1")
-        ppo.train(debug=False)
+    #     ac = MLPActorCritic(env.observation_space, env.action_space, (64, 64))
+    #     ppo = PPO(env=env, actor_critic=ac, pg_weight=pg_weight, device = "cuda:1")
+    #     ppo.train(debug=False)
 
-        ac = MLPActorCritic(env.observation_space, env.action_space, (128, 256, 128))
-        vga = VanilaPolicyGradient(env=env, actor_critic=ac, pg_weight=pg_weight, device = "cuda:1")
-        vga.train(debug=False)
+    #     ac = MLPActorCritic(env.observation_space, env.action_space, (128, 256, 128))
+    #     vga = VanilaPolicyGradient(env=env, actor_critic=ac, pg_weight=pg_weight, device = "cuda:1")
+    #     vga.train(debug=False)
