@@ -16,18 +16,19 @@ class PPO(VanilaPolicyGradient):
         self,
         env,
         actor_critic: nn.Module,
-        steps_per_epoch: int = 12000,
+        steps_per_epoch: int = 1000,
         epochs: int = 500,
         gamma: float = 0.99,
-        pi_lr: float = 1e-4,
-        vf_lr: float = 1e-4,
+        pi_lr: float = 3e-4,
+        vf_lr: float = 1e-3,
         train_v_iters: int = 100,
         train_pi_iters: int = 100,
         lam: float = 0.95,
-        max_ep_len: int = 1700,
+        max_ep_len: int = 3000,
         pg_weight: str = "reward-to-go",
         target_kl=0.01,
         clip_ratio=0.2,
+        device: str = "cpu",
     ):
         super().__init__(
             env,
@@ -41,6 +42,7 @@ class PPO(VanilaPolicyGradient):
             lam=lam,
             max_ep_len=max_ep_len,
             pg_weight=pg_weight,
+            device = device,
         )
 
         self.train_pi_iters = train_pi_iters
@@ -49,6 +51,15 @@ class PPO(VanilaPolicyGradient):
 
     def optimize(self, obs, act, weight, ret, logp) -> None:
 
+        self.ac.train()
+
+        obs, act, weight, ret, logp = (
+            obs.to(self.device),
+            act.to(self.device),
+            weight.to(self.device),
+            ret.to(self.device),
+            logp.to(self.device),
+        )
         logp_old = logp
 
         # Optimzie pi
@@ -76,11 +87,13 @@ class PPO(VanilaPolicyGradient):
             loss_v.backward()
             self.vf_opt.step()
 
+        self.ac.eval()
+
 
 if __name__ == "__main__":
 
     # compares ppo and vpg, with different reward weights.
-    env = gym.make("BipedalWalker-v3")
+    env = gym.make("CartPole-v0")
 
     for pg_weight in [
         "discounted-returns",
@@ -90,10 +103,10 @@ if __name__ == "__main__":
         "gae",
     ]:
 
-        ac = MLPActorCritic(env.observation_space, env.action_space, (128, 128))
-        ppo = PPO(env=env, actor_critic=ac, pg_weight=pg_weight)
+        ac = MLPActorCritic(env.observation_space, env.action_space, (64, 64))
+        ppo = PPO(env=env, actor_critic=ac, pg_weight=pg_weight, device = "cuda:1")
         ppo.train(debug=False)
 
-        ac = MLPActorCritic(env.observation_space, env.action_space, (128, 128))
-        vga = VanilaPolicyGradient(env=env, actor_critic=ac, pg_weight=pg_weight)
+        ac = MLPActorCritic(env.observation_space, env.action_space, (128, 256, 128))
+        vga = VanilaPolicyGradient(env=env, actor_critic=ac, pg_weight=pg_weight, device = "cuda:1")
         vga.train(debug=False)
