@@ -64,7 +64,12 @@ has the same value as 5. By their definition, setting $\lambda=0$
 yields 4. But we can see that this is not the case if we evauate using 5. It's not a big deal, because this shenanigan happend since
 ${0}^{0}$ is not well defined. Follow equation (16) from the paper for more details.
 
+# Updates!
 
+Faster buffer, cuda support, checked working on continuous environment(gym's BipedalWalker-v3)
 
+Fixed minor bugs.
+
+![](contents/conti-ppo.png)
 
 
